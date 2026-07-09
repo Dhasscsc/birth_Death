@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>பிறப்பு / இறப்பு சான்றிதழ் விண்ணப்ப டூல்</title>
+    <style>
+        :root {
+            --primary: #0369a1; /* சான்றிதழ் படிவங்களுக்கு நேர்த்தியான நீல நிறம் */
+            --secondary: #0284c7;
+            --success: #16a34a;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #cbd5e1;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { background-color: var(--bg); padding: 20px; max-width: 1500px; margin: 0 auto; display: flex; gap: 20px; }
+        
+        .form-container { flex: 1.3; background: var(--surface); padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .sidebar { flex: 0.7; background: var(--surface); padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-height: 90vh; display: flex; flex-direction: column; }
+        
+        header { text-align: center; margin-bottom: 20px; padding: 10px; border-bottom: 2px solid var(--primary); }
+        header h1 { color: var(--primary); font-size: 1.6rem; }
+        
+        h2 { color: white; margin-bottom: 15px; font-size: 1.2rem; background: var(--primary); padding: 6px 10px; border-radius: 4px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 4px; }
+        .full-width { grid-column: span 2; }
+        
+        label { font-weight: 600; font-size: 0.9rem; color: #334155; }
+        input, select, textarea { padding: 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; }
+        input:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; }
+        
+        /* Mode Selectors */
+        .mode-options { background: #f0f9ff; padding: 15px; border-radius: 6px; margin-bottom: 15px; border: 1px solid #bae6fd; display: flex; justify-content: space-around; }
+        .radio-group { display: flex; align-items: center; gap: 8px; font-weight: bold; color: #0369a1; cursor: pointer; }
+        .radio-group input { width: 18px; height: 18px; cursor: pointer; }
+
+        button[type="submit"] { padding: 12px; border: none; border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; color: white; background: var(--primary); width: 100%; }
+        button[type="submit"]:hover { background: var(--secondary); }
+        
+        .blank-print-box { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; padding: 10px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; }
+        .btn-blank { background: var(--success); font-size: 0.9rem; padding: 8px; border: none; color: white; border-radius: 4px; cursor: pointer; font-weight: bold; width: 100%; }
+        .btn-blank:hover { background: #15803d; }
+
+        .history-list { overflow-y: auto; flex: 1; margin-top: 10px; display: flex; flex-direction: column; gap: 10px; }
+        .history-item { border: 1px solid var(--border); padding: 12px; border-radius: 6px; background: #f8fafc; cursor: pointer; transition: all 0.2s; }
+        .history-item:hover { border-color: var(--primary); background: #f1f5f9; }
+        .search-box { padding: 8px; margin-bottom: 15px; border: 1px solid var(--border); border-radius: 4px; width: 100%; }
+
+        /* PRINT STYLES - MAXIMUM A4 PAGE COVER */
+        #print-area { display: none; }
+        @media print {
+            @page {
+                size: A4;
+                margin: 8mm 12mm 8mm 12mm;
+            }
+            html, body { background: #fff !important; background-color: #fff !important; width: 100%; height: 100%; }
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { 
+                display: block !important; 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 100%;
+                background: #fff !important; 
+                color: #000; 
+            }
+            
+            .p-header { text-align: center; margin-bottom: 15px; line-height: 1.4; }
+            .p-header h1 { font-size: 1.5rem; font-weight: bold; text-decoration: underline; }
+            .p-header p { font-size: 1rem; font-weight: bold; margin-top: 5px; }
+            
+            .p-table { width: 100%; border-collapse: collapse; margin-top: 5px; font-size: 0.95rem; }
+            .p-table th, .p-table td { border: 1px solid #000 !important; padding: 7px 10px !important; text-align: left; vertical-align: middle; color: #000 !important; }
+            .p-table td { height: 38px; } 
+            .p-table th { font-weight: bold; text-align: center; background: #f2f2f2 !important; height: 32px; }
+            
+            .p-box { width: 14px; height: 14px; border: 1.5px solid #000; display: inline-block; text-align: center; line-height: 12px; font-size: 0.8rem; font-weight: bold; margin-right: 3px; }
+            
+            .address-lines { display: flex; flex-direction: column; justify-content: space-between; height: 65px; }
+            .address-line { border-bottom: 1px dashed #666; height: 50%; width: 100%; }
+            .address-line:last-child { border-bottom: none; }
+            
+            .p-decl { margin-top: 15px; font-size: 0.85rem; line-height: 1.5; text-align: justify; border: 1px solid #000 !important; padding: 8px; border-radius: 4px; }
+            .p-footer { display: flex; justify-content: space-between; margin-top: 50px; font-size: 0.95rem; font-weight: bold; }
+            
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- LEFT: FORM ENTRY -->
+    <div class="form-container">
+        <header>
+            <h1>பிறப்பு / இறப்புச் சான்றிதழ் விண்ணப்பப் படிவம்</h1>
+        </header>
+
+        <!-- Service Mode Selectors -->
+        <div class="mode-options">
+            <label class="radio-group"><input type="radio" name="formMode" value="பிறப்பு" checked id="modeBirth"> 👶 பிறப்புச் சான்றிதழ் (Birth)</label>
+            <label class="radio-group"><input type="radio" name="formMode" value="இறப்பு" id="modeDeath"> 🕊️ இறப்புச் சான்றிதழ் (Death)</label>
+            |
+            <label class="radio-group"><input type="radio" name="actionType" value="புதிய பதிவு" checked id="actNew"> புதிய பதிவு</label>
+            <label class="radio-group"><input type="radio" name="actionType" value="திருத்தம்" id="actCorrect"> சான்றிதழ் திருத்தம்</label>
+        </div>
+
+        <h2>விண்ணப்ப விவரங்கள் (Data Entry)</h2>
+        <form id="certForm">
+            <div class="grid">
+                <div class="form-group">
+                    <label id="lblTargetName">1. குழந்தை / இறந்தவர் பெயர் (Name):</label>
+                    <input type="text" id="targetName" required placeholder="பெயர் தமிழில் மற்றும் ஆங்கிலத்தில்">
+                </div>
+                <div class="form-group">
+                    <label id="lblEventDate">2. பிறந்த / இறந்த தேதி (Date of Event):</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+
+                <div class="form-group">
+                    <label>3. பாலினம் (Gender):</label>
+                    <select id="gender">
+                        <option value="ஆண்">ஆண் (Male)</option>
+                        <option value="பெண்">பெண் (Female)</option>
+                        <option value="இதர">இதர (Others)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label id="lblPlace">4. நிகழ்வு நடந்த இடம் (ஆஸ்பத்திரி / இல்லம்):</label>
+                    <input type="text" id="eventPlace" placeholder="மருத்துவமனை அல்லது வீட்டு முகவரி">
+                </div>
+
+                <div class="form-group">
+                    <label>5. தந்தை / கணவர் பெயர் (Father / Husband Name):</label>
+                    <input type="text" id="fatherName" placeholder="பெயர்">
+                </div>
+                <div class="form-group">
+                    <label>6. தாயார் பெயர் (Mother Name):</label>
+                    <input type="text" id="motherName" placeholder="பெயர்">
+                </div>
+
+                <div class="form-group">
+                    <label>7. விண்ணப்பதாரரின் கைபேசி எண் (Mobile No):</label>
+                    <input type="tel" id="phone" required pattern="[0-9]{10}" placeholder="10 இலக்க எண்">
+                </div>
+                <div class="form-group">
+                    <label>8. குடும்ப அட்டை / ஸ்மார்ட் கார்டு எண் (Ration Card No):</label>
+                    <input type="text" id="rationNo" placeholder="குடும்ப அட்டை எண்">
+                </div>
+
+                <div class="form-group full-width">
+                    <label>9. நிரந்தர வீட்டு முகவரி (Address):</label>
+                    <textarea id="address" rows="2" placeholder="கதவு எண், தெரு பெயர், கிராமம்/நகரம், தாலுகா, மாவட்டம், பின்கோடு..."></textarea>
+                </div>
+
+                <div class="form-group full-width" id="correctionGroup" style="display:none;">
+                    <label style="color: #c2410c;">10. செய்யப்பட வேண்டிய திருத்தங்கள் (விவரமாக எழுதவும்):</label>
+                    <input type="text" id="correctionDetails" placeholder="உதா: தந்தை பெயரில் உள்ள எழுத்துப் பிழையை மாற்ற வேண்டும்">
+                </div>
+            </div>
+
+            <button type="submit">💾 விபரங்களைச் சேமி & பிரிண்ட் எடு</button>
+        </form>
+    </div>
+
+    <!-- RIGHT: SIDEBAR -->
+    <div class="sidebar">
+        <h2>அச்சு வசதிகள்</h2>
+        <div class="blank-print-box">
+            <button type="button" class="btn-blank" onclick="printBlankForm()">🖨️ வெற்று படிவம் பிரிண்ட் (Blank Form)</button>
+        </div>
+
+        <h2>பதிவு செய்யப்பட்டவை</h2>
+        <input type="text" id="search" class="search-box" placeholder="பெயர் / போன் மூலம் தேட..." oninput="loadData()">
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <!-- PRINT LAYOUT AREA -->
+    <div id="print-area">
+        <div class="p-header">
+            <h1 id="pMainTitle">பிறப்புச் சான்றிதழ் விண்ணப்பப் படிவம்</h1>
+            <p>(உள்ளாட்சி அமைப்பு / கிராம நிர்வாக அலுவலகம் சமர்ப்பிக்க)</p>
+        </div>
+
+        <table class="p-table">
+            <thead>
+                <tr>
+                    <th style="width: 8%;">வ.எண்</th>
+                    <th style="width: 42%;">விண்ணப்பக் கோரிக்கை விவரங்கள்</th>
+                    <th style="width: 50%;">விவரங்கள்</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="text-align: center;">1.</td>
+                    <td>விண்ணப்பத்தின் வகை (Type of Application)</td>
+                    <td>
+                        <span class="p-box" id="pTypeReg"></span> புதிய பதிவு &nbsp;&nbsp;&nbsp;&nbsp;
+                        <span class="p-box" id="pTypeCorr"></span> சான்றிதழ் திருத்தம்
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">2.</td>
+                    <td id="pLabelName">குழந்தையின் பெயர் (Name)</td>
+                    <td><strong id="pTargetName"></strong></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">3.</td>
+                    <td id="pLabelDate">பிறந்த தேதி (Date of Event)</td>
+                    <td><span id="pEventDate" style="font-weight: bold;"></span></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">4.</td>
+                    <td>பாலினம் (Gender)</td>
+                    <td id="pGender"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">5.</td>
+                    <td>நிகழ்வு நடைபெற்ற இடம் (Place of Event)</td>
+                    <td id="pEventPlace"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">6.</td>
+                    <td>தந்தை / கணவர் பெயர் (Father / Husband Name)</td>
+                    <td id="pFatherName"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">7.</td>
+                    <td>தாயார் பெயர் (Mother Name)</td>
+                    <td id="pMotherName"></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">8.</td>
+                    <td>கைபேசி எண் / ஸ்மார்ட் கார்டு எண்</td>
+                    <td>📱 <span id="pPhone" style="font-weight:bold;"></span> / 💳 <span id="pRationNo"></span></td>
+                </tr>
+                <tr>
+                    <td style="text-align: center;">9.</td>
+                    <td>நிரந்தர வீட்டு முகவரி (Address)</td>
+                    <td id="pAddressContainer" style="height: 70px; vertical-align: top; padding: 6px 10px !important;">
+                        <!-- JS Dynamic Lines -->
+                    </td>
+                </tr>
+                <tr id="pCorrectionRow">
+                    <td style="text-align: center;">10.</td>
+                    <td style="color: #000; font-weight: bold;">கோரப்படும் திருத்த விவரம் (ஏதேனும் இருப்பின்)</td>
+                    <td id="pCorrectionDetails" style="font-style: italic;"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="p-decl">
+            <strong>📋 உறுதிமொழி & சான்றுகள்:</strong> இப்படிவத்தில் சமர்ப்பிக்கப்பட்டுள்ள அனைத்து விபரங்களும் உண்மையானவை என உறுதியளிக்கிறேன். இதனுடன் மருத்துவமனை அட்டை/கிராம நிர்வாக அலுவலர் (VAO) சான்று/குடும்ப அட்டை நகல் ஆகியவற்றை இணைத்துள்ளேன். சான்றிதழில் திருத்தம் எனில் தவாறான பழைய சான்றிதழின் அசல் நகலை இத்துடன் இணைத்துள்ளேன்.
+        </div>
+
+        <div class="p-footer">
+            <div>
+                <p>இடம்: ____________________</p>
+                <p style="margin-top: 12px;">தேதி: <span id="pPrintDate"></span></p>
+            </div>
+            <div style="text-align: center;">
+                <br>
+                <p>விண்ணப்பதாரரின் கையொப்பம்</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JAVASCRIPT LOGIC -->
+    <script {nonce}>
+        let db;
+        const request = indexedDB.open("BirthDeathCertDB", 1);
+        
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+            if(!db.objectStoreNames.contains("applications")) {
+                db.createObjectStore("applications", { keyPath: "id", autoIncrement: true });
+            }
+        };
+        request.onsuccess = (e) => { db = e.target.result; loadData(); };
+
+        // Handle Form Mode Changes to update UI labels dynamically
+        function updateLabels() {
+            const isBirth = document.getElementById('modeBirth').checked;
+            const isCorrection = document.getElementById('actCorrect').checked;
+
+            document.getElementById('lblTargetName').innerText = isBirth ? "1. குழந்தை பெயர் (Child Name):" : "1. இறந்தவர் பெயர் (Deceased Name):";
+            document.getElementById('lblEventDate').innerText = isBirth ? "2. பிறந்த தேதி (Date of Birth):" : "2. இறந்த தேதி (Date of Death):";
+            document.getElementById('lblPlace').innerText = isBirth ? "4. பிறந்த இடம் (Hospital/Home):" : "4. இறப்பு நிகழ்ந்த இடம் (Place of Death):";
+            
+            document.getElementById('correctionGroup').style.display = isCorrection ? "flex" : "none";
+        }
+
+        document.querySelectorAll('input[name="formMode"], input[name="actionType"]').forEach(el => {
+            el.addEventListener('change', updateLabels);
+        });
+
+        // Form Submission
+        document.getElementById('certForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            let rawDate = document.getElementById('eventDate').value;
+            let formattedDate = rawDate ? rawDate.split('-').reverse().join('/') : '';
+
+            const record = {
+                mode: document.querySelector('input[name="formMode"]:checked').value,
+                action: document.querySelector('input[name="actionType"]:checked').value,
+                targetName: document.getElementById('targetName').value,
+                eventDate: formattedDate,
+                gender: document.getElementById('gender').value,
+                eventPlace: document.getElementById('eventPlace').value,
+                fatherName: document.getElementById('fatherName').value,
+                motherName: document.getElementById('motherName').value,
+                phone: document.getElementById('phone').value,
+                rationNo: document.getElementById('rationNo').value,
+                address: document.getElementById('address').value,
+                correctionDetails: document.getElementById('correctionDetails').value,
+                date: new Date().toLocaleDateString('en-GB')
+            };
+
+            const tx = db.transaction("applications", "readwrite");
+            tx.objectStore("applications").add(record);
+            
+            tx.oncomplete = () => {
+                alert("விவரங்கள் வெற்றிகரமாகச் சேமிக்கப்பட்டன!");
+                loadData();
+                printCertForm(record, false);
+                document.getElementById('certForm').reset();
+                updateLabels();
+            };
+        });
+
+        function loadData() {
+            const searchQ = document.getElementById('search').value.toLowerCase();
+            const list = document.getElementById('historyList');
+            list.innerHTML = "";
+
+            db.transaction("applications", "readonly").objectStore("applications").openCursor(null, "prev").onsuccess = (e) => {
+                const cursor = e.target.result;
+                if(cursor) {
+                    const v = cursor.value;
+                    if(v.targetName.toLowerCase().includes(searchQ) || v.phone.includes(searchQ)) {
+                        const div = document.createElement('div');
+                        div.className = "history-item";
+                        div.onclick = () => printCertForm(v, false);
+                        div.innerHTML = `
+                            <strong>${v.targetName} (${v.mode} - ${v.action})</strong><br>
+                            <small>📱 போன்: ${v.phone} | 📅 தேதி: ${v.date}</small>
+                        `;
+                        list.appendChild(div);
+                    }
+                    cursor.continue();
+                }
+            };
+        }
+
+        function printCertForm(v, isBlank = false) {
+            const addrContainer = document.getElementById('pAddressContainer');
+            document.getElementById('pTypeReg').innerText = "";
+            document.getElementById('pTypeCorr').innerText = "";
+
+            if (isBlank) {
+                const isBirth = document.getElementById('modeBirth').checked;
+                const isCorrection = document.getElementById('actCorrect').checked;
+
+                document.getElementById('pMainTitle').innerText = (isBirth ? "பிறப்புச்" : "இறப்புச்") + " சான்றிதழ் விண்ணப்பப் படிவம்";
+                document.getElementById('pLabelName').innerText = isBirth ? "குழந்தையின் பெயர் (Name)" : "இறந்தவர் பெயர் (Name)";
+                document.getElementById('pLabelDate').innerText = isBirth ? "பிறந்த தேதி (Date of Birth)" : "இறந்த தேதி (Date of Death)";
+                
+                document.getElementById('pTypeReg').innerText = !isCorrection ? "✓" : "";
+                document.getElementById('pTypeCorr').innerText = isCorrection ? "✓" : "";
+
+                document.getElementById('pTargetName').innerHTML = "&nbsp;";
+                document.getElementById('pEventDate').innerHTML = "&nbsp;";
+                document.getElementById('pGender').innerHTML = "&nbsp;";
+                document.getElementById('pEventPlace').innerHTML = "&nbsp;";
+                document.getElementById('pFatherName').innerHTML = "&nbsp;";
+                document.getElementById('pMotherName').innerHTML = "&nbsp;";
+                document.getElementById('pPhone').innerHTML = "&nbsp;";
+                document.getElementById('pRationNo').innerHTML = "&nbsp;";
+                document.getElementById('pCorrectionDetails').innerHTML = "&nbsp;";
+                document.getElementById('pPrintDate').innerText = "____/____/________";
+
+                addrContainer.innerHTML = `
+                    <div class="address-lines">
+                        <div class="address-line"></div>
+                        <div class="address-line"></div>
+                    </div>`;
+                
+                document.getElementById('pCorrectionRow').style.display = isCorrection ? "table-row" : "none";
+            } else {
+                // Setup headers based on Saved Mode
+                const isBirth = (v.mode === "பிறப்பு");
+                document.getElementById('pMainTitle').innerText = v.mode + "ச் சான்றிதழ் விண்ணப்பப் படிவம்";
+                document.getElementById('pLabelName').innerText = isBirth ? "குழந்தையின் பெயர் (Name)" : "இறந்தவர் பெயர் (Name)";
+                document.getElementById('pLabelDate').innerText = isBirth ? "பிறந்த தேதி (Date of Birth)" : "இறந்த தேதி (Date of Death)";
+
+                document.getElementById('pTypeReg').innerText = (v.action === "புதிய பதிவு") ? "✓" : "";
+                document.getElementById('pTypeCorr').innerText = (v.action === "திருத்தம்") ? "✓" : "";
+
+                document.getElementById('pTargetName').innerText = v.targetName;
+                document.getElementById('pEventDate').innerText = v.eventDate;
+                document.getElementById('pGender').innerText = v.gender;
+                document.getElementById('pEventPlace').innerText = v.eventPlace || '-';
+                document.getElementById('pFatherName').innerText = v.fatherName || '-';
+                document.getElementById('pMotherName').innerText = v.motherName || '-';
+                document.getElementById('pPhone').innerText = v.phone;
+                document.getElementById('pRationNo').innerText = v.rationNo || '-';
+                document.getElementById('pPrintDate').innerText = v.date;
+
+                addrContainer.innerHTML = `<div style="line-height:1.4; word-break:break-word;">${v.address || '&nbsp;'}</div>`;
+
+                if(v.action === "திருத்தம்") {
+                    document.getElementById('pCorrectionRow').style.display = "table-row";
+                    document.getElementById('pCorrectionDetails').innerText = v.correctionDetails || '-';
+                } else {
+                    document.getElementById('pCorrectionRow').style.display = "none";
+                }
+            }
+
+            window.print();
+        }
+
+        function printBlankForm() {
+            printCertForm(null, true);
+        }
+    </script>
+</body>
+</html>
